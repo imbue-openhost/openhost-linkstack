@@ -1,0 +1,58 @@
+[app]
+name = "linkstack"
+version = "0.1.0"
+description = "LinkStack (open-source Linktree alternative) packaged for OpenHost with one-click owner SSO and public link-page passthrough."
+authors = ["Andrew Laack <andrew@laack.co>"]
+
+[runtime.container]
+image = "Dockerfile"
+port = 8080
+
+[routing]
+health_check = "/_healthz"
+# Paths the OpenHost router lets through without zone_auth so anonymous
+# visitors can view publicly shared link pages and assets.
+#
+# IMPORTANT: do NOT list "/" here. The router treats "/" as a prefix that
+# matches every path, which would make the ENTIRE app public and stop the
+# router from ever stamping X-OpenHost-Is-Owner — breaking owner SSO. We
+# therefore expose only the specific public-share prefixes. A visitor's public
+# link page is reachable at /@<handle> and /u/<id>.
+#
+# These MUST stay in sync with PUBLIC_PREFIXES in
+# app/Http/Middleware/OpenHostSso.php.
+public_paths = [
+    "/_healthz",
+    "/p/",
+    "/@",
+    "/u/",
+    "/theme/",
+    "/vcard/",
+    "/going/",
+    "/info/",
+    "/pages/",
+    "/report",
+    "/demo-page",
+    "/block-asset/",
+    "/social-auth/",
+    "/login",
+    "/css/",
+    "/js/",
+    "/img/",
+    "/images/",
+    "/fonts/",
+    "/assets/",
+    "/themes/",
+    "/storage/",
+    "/favicon.ico",
+    "/robots.txt",
+    "/apple-touch-icon.png",
+]
+
+[resources]
+memory_mb = 768
+cpu_millicores = 750
+
+[data]
+app_data = true
+app_temp_data = true

@@ -17,7 +17,8 @@ health_check = "/_healthz"
 # matches every path, which would make the ENTIRE app public and stop the
 # router from ever stamping X-OpenHost-Is-Owner — breaking owner SSO. We
 # therefore expose only the specific public-share prefixes. A visitor's public
-# link page is reachable at /@<handle> and /u/<id>.
+# link page is reachable at /p/<handle> (custom_url_prefix is set to "p/" in
+# start.sh so the page lives under a slash-terminated, router-matchable path).
 #
 # These MUST stay in sync with PUBLIC_PREFIXES in
 # app/Http/Middleware/OpenHostSso.php.

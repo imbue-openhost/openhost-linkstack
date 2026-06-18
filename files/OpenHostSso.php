@@ -86,8 +86,11 @@ class OpenHostSso
         // Never auto-login on a publicly shareable path.
         $path = ltrim($request->path(), '/');
         if ($path === '' ) {
-            // The site root is the public home / owner's link page; let it be
-            // public. The owner reaches the panel via /dashboard.
+            // Do NOT auto-login at the site root. The root renders LinkStack's
+            // home / the owner's own link page, which we want to show as-is.
+            // The root is NOT in public_paths, so the OpenHost router still
+            // gates it behind zone_auth (only the owner reaches it); the owner
+            // opens the admin panel via /dashboard, where auto-login fires.
             return false;
         }
         foreach (self::PUBLIC_PREFIXES as $prefix) {

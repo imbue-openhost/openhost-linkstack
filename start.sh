@@ -236,25 +236,37 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Security hardening (runs every boot, idempotent).
+# Security hardening (runs every boot — MUST succeed before we serve traffic).
 #
 # The AdminSeeder seeds the admin with a well-known default password
 # ('12345678'). Because the owner authenticates exclusively via OpenHost SSO
 # (trusted header), that password is never needed — but LinkStack's /login form
 # is publicly reachable, so a known default would let ANYONE log in as admin.
-# We therefore rotate every user's password to a fresh strong random value on
-# each boot. The plaintext is generated in memory and discarded; only the bcrypt
-# hash is written to the DB. Nothing usable lands on disk.
+# We rotate every user's password to a fresh strong random value, then VERIFY
+# the default no longer authenticates. The plaintext is generated in memory and
+# discarded; only the bcrypt hash is written to the DB. Nothing usable lands on
+# disk.
+#
+# This is a hard gate: if rotation/verification fails we must NOT start Apache,
+# otherwise the publicly-reachable /login form would accept the default
+# credentials. Exiting non-zero makes OpenHost restart the container and retry.
 # ---------------------------------------------------------------------------
 HARDEN_PHP='foreach (\App\Models\User::all() as $u) {
     $u->password = \Illuminate\Support\Facades\Hash::make(bin2hex(random_bytes(32)));
     $u->save();
 }
-echo "rotated\n";'
-if ( cd "$APP_DIR" && printf '%s' "$HARDEN_PHP" | php artisan tinker --no-ansi ) >/dev/null 2>&1; then
-  log "rotated all user passwords to random values (owner uses SSO)"
+$bad = 0;
+foreach (\App\Models\User::all() as $u) {
+    if (\Illuminate\Support\Facades\Hash::check("12345678", $u->password)) { $bad++; }
+}
+if ($bad > 0) { throw new \Exception("default password still valid for $bad user(s)"); }
+echo "ROTATE_OK\n";'
+if ( cd "$APP_DIR" && printf '%s' "$HARDEN_PHP" | php artisan tinker --no-ansi 2>&1 ) | grep -q "ROTATE_OK"; then
+  log "rotated + verified all user passwords (owner uses SSO; default rejected)"
 else
-  log "WARNING: failed to rotate admin password; check /login exposure"
+  log "FATAL: could not rotate/verify admin password; refusing to start so the"
+  log "       public /login form cannot accept the default credentials."
+  exit 1
 fi
 
 # Disable public self-registration: this is a single-tenant owner deployment.

@@ -8,9 +8,11 @@ owner SSO and public link-page passthrough.
 
 - The full LinkStack admin panel, auto-logged-in for the OpenHost instance
   owner. No LinkStack username/password to manage.
-- Public link pages (`/@handle`, the site root, vCards, themed pages, outbound
-  click links) reachable by anyone without OpenHost login — exactly what a
-  Linktree-style page is for.
+- Public link pages reachable by anyone without OpenHost login — exactly what a
+  Linktree-style page is for. The shareable URL is **`/p/<handle>`** (e.g.
+  `/p/admin`), plus vCards (`/vcard/...`), themed pages, and outbound click
+  links (`/going/...`). See "Public-page passthrough" below for why the site
+  root `/` is deliberately gated and `/@handle` is not the public URL here.
 - SQLite storage, persisted across restarts in the app's OpenHost data dir.
 
 ## How auth works

@@ -349,6 +349,49 @@ PY
   log "patched TrustProxies to trust the loopback auth-proxy"
 fi
 
+# Fix broken Font Awesome icon/webfont URLs on public link pages.
+#
+# The public page template inlines assets/external-dependencies/fontawesome.css,
+# which references its webfonts with the *relative* URL `url(assets/webfonts/…)`.
+# On a normal LinkStack install pages live at /@<handle> (directory "/"), so the
+# browser resolves that to /assets/webfonts/… and it works. Here pages live at
+# /p/<handle> (directory "/p/"), so the browser resolves it to
+# /p/assets/webfonts/… → 404, and every Font Awesome icon on a public page
+# breaks. We rewrite those references to be root-relative (/assets/webfonts/…)
+# so they resolve correctly regardless of the page's path depth. Idempotent.
+for BLADE in \
+  "$APP_DIR/resources/views/linkstack/modules/assets.blade.php" \
+  "$APP_DIR/resources/views/demo.blade.php"; do
+  # Apply only if the original str_replace() line is still present (idempotent:
+  # once rewritten the original literal is gone, so re-runs are a no-op).
+  if [ -f "$BLADE" ] && \
+     grep -qF "str_replace('../', 'studio/', file_get_contents(base_path(\"assets/external-dependencies/fontawesome.css\")))" "$BLADE" 2>/dev/null; then
+    # Extend the existing str_replace() that already rewrites '../' so it also
+    # absolutises the webfont URLs. Matching the literal source line keeps this
+    # surgical and a no-op once applied.
+    if python3 - "$BLADE" <<'PY'
+import sys
+path = sys.argv[1]
+src = open(path).read()
+old = "str_replace('../', 'studio/', file_get_contents(base_path(\"assets/external-dependencies/fontawesome.css\")))"
+new = ("str_replace(['../', 'url(assets/webfonts/'], "
+       "['studio/', 'url(/assets/webfonts/'], "
+       "file_get_contents(base_path(\"assets/external-dependencies/fontawesome.css\")))")
+if old not in src:
+    sys.exit(3)
+src = src.replace(old, new)
+open(path, "w").write(src)
+PY
+    then
+      log "patched Font Awesome webfont URLs in $(basename "$BLADE")"
+    else
+      # Non-fatal (icons would still partially work via cached fonts), but the
+      # operator must know the public-page Font Awesome fix did not apply.
+      log "WARNING: failed to patch Font Awesome webfont URLs in $(basename "$BLADE")"
+    fi
+  fi
+done
+
 # Clear ALL caches AFTER patching the kernel/middleware. The upstream release
 # image ships a cached route table (bootstrap/cache/routes.php) that serialises
 # the middleware stack at build time — without clearing it, our newly-registered

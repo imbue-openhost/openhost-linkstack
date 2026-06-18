@@ -43,6 +43,7 @@ public_paths = [
     "/images/",
     "/fonts/",
     "/assets/",
+    "//assets/",
     "/themes/",
     "/storage/",
     "/favicon.ico",
